@@ -24,10 +24,15 @@ public class QueueController {
     @Autowired
     private WebClient webClient;
 
+    private QueueSink queueSink = new QueueSink();
+
+    Flux<String> queueFlux = Flux.create(queueSink).cache();
+
     @GetMapping("/joinQueue/{username}")
     public Mono<String> joinQueue(@PathVariable(value="username") String username) throws IOException {
         User ans = myRepo.findByUsername(username);
         if(ans!=null){
+            queueSink.produce("Usuario: "+username+"<br/>");
             fila.add(ans);
             return Mono.just("Adicionado com sucesso");
         }
@@ -36,14 +41,16 @@ public class QueueController {
         }
     }
     @GetMapping("/printQueue")
-    public Mono<String> printQueue() throws IOException {
-        StringBuilder ans = new StringBuilder("");
-        for(User user : fila){
-            ans.append("<br>").append(user.getUsername());
-        }
-        ans.append("<br>");
-        if(ans.length()==4)return Mono.just("Não tem ninguém na fila");
-        return Mono.just(ans.toString());
+    public Flux<String> printQueue() throws IOException {
+
+        return queueFlux;
+//        StringBuilder ans = new StringBuilder("");
+//        for(User user : fila){
+//            ans.append("<br>").append(user.getUsername());
+//        }
+//        ans.append("<br>");
+//        if(ans.length()==4)return Mono.just("Não tem ninguém na fila");
+//        return Mono.just(ans.toString());
     }
     Integer calcRating(User u1,User u2){
         int r1 = u1.getRating();
