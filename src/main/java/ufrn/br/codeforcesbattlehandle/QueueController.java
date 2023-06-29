@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 public class QueueController {
@@ -25,6 +26,8 @@ public class QueueController {
     private WebClient webClient;
 
     private QueueSink queueSink = new QueueSink();
+
+    private QueueSink battleSink = new QueueSink();
 
     Flux<String> queueFlux = Flux.create(queueSink).cache();
 
@@ -40,17 +43,10 @@ public class QueueController {
             return Mono.just("Esse usuario nao existe");
         }
     }
+
     @GetMapping("/printQueue")
     public Flux<String> printQueue() throws IOException {
-
         return queueFlux;
-//        StringBuilder ans = new StringBuilder("");
-//        for(User user : fila){
-//            ans.append("<br>").append(user.getUsername());
-//        }
-//        ans.append("<br>");
-//        if(ans.length()==4)return Mono.just("Não tem ninguém na fila");
-//        return Mono.just(ans.toString());
     }
     Integer calcRating(User u1,User u2){
         int r1 = u1.getRating();
@@ -65,16 +61,39 @@ public class QueueController {
 
     @GetMapping("/battle/{user1}&{user2}")
     public Mono<String> batalha(@PathVariable(value="user1") String user1, @PathVariable(value="user2") String user2) throws IOException {
-        User u1 = myRepo.findByUsername(user1);
-        User u2 = myRepo.findByUsername(user2);
-        String requestURL = "/getProblem/" + calcRating(u1, u2).toString();
+        User u1,u2;
+        u1 = myRepo.findByUsername(user1);
 
-        return  webClient.get()
+
+        u2 = myRepo.findByUsername(user2);
+
+        if(u1==null)return Mono.just("Usuario "+user1+" não existe");
+        if(u2==null)return Mono.just("Usuario "+user2+" não existe");
+
+        String requestURL = "http://Problem-Handler/getProblem/" + calcRating(u1, u2).toString();
+
+        Mono<String> s =  webClient.get()
                 .uri(requestURL)
                 .retrieve()
                 .bodyToMono(String.class);
 
+        return s;
     }
+
+    @GetMapping("/checkTrue/{user1}&{problem}")
+    public Mono<String> checkTrue(@PathVariable(value="user1") String user1, @PathVariable(value="problem") String problem) throws IOException {
+
+        String requestURL = "http://External-Communication-Handler/checkTrue/" + user1+"&"+problem;
+
+        Mono<String> s =  webClient.get()
+                .uri(requestURL)
+                .retrieve()
+                .bodyToMono(String.class);
+        //battleSink.produce(s.toString());
+        return s;
+    }
+
+
 
 
     }
